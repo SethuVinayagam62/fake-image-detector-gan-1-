@@ -1,11 +1,8 @@
 import os
 import cv2
 import numpy as np
-import tensorflow as tf
 import uuid
 from flask import Flask, render_template, request, jsonify
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization
 
 # ==========================================
 # 1. GLOBAL CONFIGURATION
@@ -23,7 +20,6 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 # ==========================================
 # 2. FACE DETECTOR SETUP
 # ==========================================
-# Uses OpenCV's built-in face detector — no extra dependencies needed
 FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 def crop_face(img_rgb):
@@ -38,10 +34,8 @@ def crop_face(img_rgb):
         print("WARNING: No face detected, using full image.")
         return img_rgb
 
-    # Pick the largest face
     x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
 
-    # Add 20% padding around the face
     pad = int(0.2 * max(w, h))
     x1 = max(0, x - pad)
     y1 = max(0, y - pad)
@@ -51,40 +45,74 @@ def crop_face(img_rgb):
     return img_rgb[y1:y2, x1:x2]
 
 # ==========================================
-# 3. MESONET ARCHITECTURE
+# 3. LAZY MODEL LOADER
 # ==========================================
-def build_meso4():
-    inp = Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+_model = None
 
-    x = Conv2D(8, (3, 3), padding='same', activation='relu')(inp)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+def get_model():
+    """
+    Lazy-loads the MesoNet model only on first prediction request.
+    This prevents Gunicorn worker timeout during startup.
+    """
+    global _model
+    if _model is not None:
+        return _model
 
-    x = Conv2D(8, (5, 5), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+    # Import TensorFlow only when needed
+    import tensorflow as tf
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import (
+        Input, Dense, Flatten, Conv2D,
+        MaxPooling2D, BatchNormalization
+    )
 
-    x = Conv2D(16, (5, 5), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+    # Limit TF memory growth to avoid OOM on Render free tier
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
 
-    x = Conv2D(16, (5, 5), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(4, 4), padding='same')(x)
+    # Limit CPU threads to reduce memory overhead
+    tf.config.threading.set_intra_op_parallelism_threads(1)
+    tf.config.threading.set_inter_op_parallelism_threads(1)
 
-    y = Flatten()(x)
-    y = Dense(16)(y)
-    y = Dense(1, activation='sigmoid')(y)
+    def build_meso4():
+        inp = Input(shape=(IMG_SIZE, IMG_SIZE, 3))
 
-    return Model(inputs=inp, outputs=y)
+        x = Conv2D(8, (3, 3), padding='same', activation='relu')(inp)
+        x = BatchNormalization()(x)
+        x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
 
-model = build_meso4()
-try:
-    model.load_weights("Meso4_DF.h5")
-    model.trainable = False
-    print("SUCCESS: MesoNet weights loaded.")
-except Exception as e:
-    print(f"ERROR: Could not load weights: {e}")
+        x = Conv2D(8, (5, 5), padding='same', activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+
+        x = Conv2D(16, (5, 5), padding='same', activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+
+        x = Conv2D(16, (5, 5), padding='same', activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = MaxPooling2D(pool_size=(4, 4), padding='same')(x)
+
+        y = Flatten()(x)
+        y = Dense(16)(y)
+        y = Dense(1, activation='sigmoid')(y)
+
+        return Model(inputs=inp, outputs=y)
+
+    print("INFO: Building MesoNet architecture...")
+    model = build_meso4()
+
+    try:
+        model.load_weights("Meso4_DF.h5")
+        model.trainable = False
+        print("SUCCESS: MesoNet weights loaded.")
+    except Exception as e:
+        print(f"ERROR: Could not load weights: {e}")
+
+    _model = model
+    return _model
 
 # ==========================================
 # 4. PREPROCESSING PIPELINE
@@ -110,6 +138,7 @@ def predict_image(path):
         raise ValueError("Could not read image file.")
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     tensor = preprocess_face(img_rgb)
+    model = get_model()
     score = float(model(tensor, training=False).numpy()[0][0])
     print(f"IMAGE raw_score={score:.4f}")
     return score
@@ -123,6 +152,7 @@ def predict_video(video_path):
     if not cap.isOpened():
         raise ValueError("Could not open video file.")
 
+    model = get_model()
     frame_scores = []
     count = 0
 
@@ -158,8 +188,6 @@ def interpret_score(raw_score):
     MesoNet convention:
       raw_score → 1.0  =  FAKE  (high AI influence)
       raw_score → 0.0  =  REAL  (low AI influence)
-
-    ai_percent is how fake/AI-influenced the media is, in %.
     """
     ai_percent = round((1 - raw_score) * 100, 2)
 
@@ -225,7 +253,3 @@ def predict():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
-
-
-
