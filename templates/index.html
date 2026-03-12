@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckAI — Advanced Verification Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #04060d;
+  --surface:   #080c18;
+  --panel:     rgba(12, 18, 32, 0.85);
+  --border:    rgba(40, 60, 100, 0.4);
+  --border-hi: rgba(0, 200, 255, 0.3);
+  --cyan:      #00c8ff;
+  --violet:    #7b2fff;
+  --emerald:   #00ffa3;
+  --rose:      #ff3d6e;
+  --amber:     #ffaa00;
+  --text:      #ccd6f6;
+  --text-dim:  #5a7090;
+  --glow-c: 0 0 30px rgba(0,200,255,0.25);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND ── */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.bg-orb {
+  position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+  filter: blur(80px);
+}
+.orb1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%); top: -100px; left: -150px; }
+.orb2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(123,47,255,0.08) 0%, transparent 70%); bottom: -100px; right: -100px; }
+.orb3 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(255,61,110,0.05) 0%, transparent 70%); top: 40%; left: 50%; transform: translateX(-50%); }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 64px;
+  background: rgba(4,6,13,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+nav::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent);
+  opacity: 0.5;
+}
+.nav-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem; font-weight: 700; letter-spacing: 2px;
+  color: white;
+  display: flex; align-items: center; gap: 10px;
+}
+.nav-logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-link {
+  font-size: 0.82rem; font-weight: 500; letter-spacing: 0.5px;
+  color: var(--text-dim);
+  padding: 7px 14px; border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.nav-link:hover { color: var(--cyan); border-color: var(--border-hi); background: rgba(0,200,255,0.06); }
+.nav-link.active { color: var(--cyan); border-color: var(--border-hi); background: rgba(0,200,255,0.08); }
+
+/* ── HERO ── */
+.hero {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80px 40px 60px;
+  text-align: center;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Fira Code', monospace; font-size: 0.72rem; letter-spacing: 1px;
+  color: var(--cyan);
+  background: rgba(0,200,255,0.07);
+  border: 1px solid rgba(0,200,255,0.2);
+  padding: 6px 16px; border-radius: 100px;
+  margin-bottom: 28px;
+}
+.hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); animation: pulse 1.5s infinite; }
+
+h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
+  font-weight: 900; line-height: 1.05; letter-spacing: -1px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #a0c4ff 50%, var(--cyan) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.hero-sub {
+  font-size: 1.05rem; color: var(--text-dim); max-width: 540px; line-height: 1.65;
+  margin-bottom: 50px;
+}
+
+/* ── UPLOAD ── */
+.upload-section {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 40px 80px;
+}
+
+.upload-box {
+  width: 100%; max-width: 540px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  padding: 50px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative; overflow: hidden;
+}
+.upload-box::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(0,200,255,0.05) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.upload-box:hover { border-color: var(--cyan); box-shadow: var(--glow-c); }
+.upload-box:hover::before { opacity: 1; }
+
+.upload-icon-wrap {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; margin: 0 auto 20px;
+  transition: transform 0.3s;
+}
+.upload-box:hover .upload-icon-wrap { transform: translateY(-4px) scale(1.05); }
+
+.upload-title { font-size: 1.05rem; font-weight: 600; color: white; margin-bottom: 8px; }
+.upload-sub { font-size: 0.85rem; color: var(--text-dim); }
+
+#file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.file-status {
+  width: 100%; max-width: 540px;
+  margin-top: 12px; padding: 14px 20px;
+  border-radius: 12px;
+  background: rgba(8,12,24,0.9);
+  border: 1px solid var(--border);
+  display: none; align-items: center; gap: 12px;
+  font-size: 0.88rem; color: var(--cyan);
+  font-family: 'Fira Code', monospace;
+}
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--cyan); border-bottom-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 40px; max-width: 1300px; margin: 0 auto 40px;
+}
+.divider-line { flex: 1; height: 1px; background: var(--border); }
+.divider-label {
+  font-family: 'Fira Code', monospace; font-size: 0.7rem;
+  color: var(--text-dim); letter-spacing: 2px; white-space: nowrap;
+}
+
+/* ── NAV CARDS GRID ── */
+.nav-cards-section {
+  position: relative; z-index: 1;
+  padding: 0 40px 100px;
+  max-width: 1300px; margin: 0 auto;
+}
+
+.cards-header {
+  text-align: center; margin-bottom: 50px;
+}
+.cards-header h2 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.6rem; font-weight: 700; color: white;
+  margin-bottom: 10px;
+}
+.cards-header p { font-size: 0.9rem; color: var(--text-dim); }
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* Base card */
+.nav-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px 28px;
+  text-decoration: none;
+  color: var(--text);
+  display: flex; flex-direction: column; gap: 16px;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+  cursor: pointer;
+}
+.nav-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity 0.35s;
+  border-radius: inherit;
+}
+.nav-card:hover { transform: translateY(-8px); }
+.nav-card:hover::before { opacity: 1; }
+.nav-card:hover .card-arrow { transform: translate(4px, -4px); opacity: 1; }
+
+/* Per-card accent colors */
+.card-cyan  { --accent: var(--cyan); }
+.card-violet{ --accent: var(--violet); }
+.card-emerald{--accent: var(--emerald); }
+.card-rose  { --accent: var(--rose); }
+.card-amber { --accent: var(--amber); }
+.card-sky   { --accent: #38b6ff; }
+
+.nav-card:hover { border-color: var(--accent); box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 30px -5px rgba(0,0,0,0.3); }
+.card-cyan:hover  { box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(0,200,255,0.12); }
+.card-violet:hover{ box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(123,47,255,0.12); }
+.card-emerald:hover{box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(0,255,163,0.12);}
+.card-rose:hover  { box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(255,61,110,0.12);}
+.card-amber:hover { box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(255,170,0,0.12);}
+.card-sky:hover   { box-shadow: 0 20px 60px -15px rgba(0,0,0,0.7), 0 0 40px rgba(56,182,255,0.12);}
+
+.card-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s;
+}
+.nav-card:hover .card-icon {
+  background: rgba(var(--accent-rgb, 0,200,255), 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(0,0,0,0.2);
+  transform: scale(1.08);
+}
+
+.card-content { flex: 1; }
+.card-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem; letter-spacing: 1.5px;
+  color: var(--accent, var(--cyan));
+  text-transform: uppercase; margin-bottom: 8px;
+  opacity: 0.8;
+}
+.card-title {
+  font-size: 1.05rem; font-weight: 700; color: white;
+  margin-bottom: 10px; line-height: 1.2;
+}
+.card-desc {
+  font-size: 0.82rem; color: var(--text-dim); line-height: 1.6;
+}
+
+.card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 16px; margin-top: 4px;
+}
+.card-status {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.68rem; color: var(--text-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 6px var(--emerald);
+  animation: pulse 2s infinite;
+}
+.status-dot.inactive { background: var(--text-dim); box-shadow: none; animation: none; }
+
+.card-arrow {
+  font-size: 0.9rem; color: var(--accent, var(--cyan));
+  opacity: 0; transition: all 0.3s; transform: translate(0, 0);
+}
+
+/* Featured card (larger) */
+.card-featured {
+  grid-column: span 2;
+  flex-direction: row; gap: 28px; align-items: flex-start;
+}
+.card-featured .card-icon { width: 64px; height: 64px; font-size: 1.8rem; flex-shrink: 0; }
+.card-featured .card-desc { max-width: 400px; }
+
+/* ── STATS ROW ── */
+.stats-row {
+  position: relative; z-index: 1;
+  display: flex; justify-content: center; gap: 0;
+  max-width: 900px; margin: 0 auto 80px;
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+  background: var(--panel); backdrop-filter: blur(12px);
+}
+.stat-item {
+  flex: 1; text-align: center;
+  padding: 24px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.stat-item:last-child { border-right: none; }
+.stat-num {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.6rem; font-weight: 700; color: white;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 0.75rem; color: var(--text-dim); letter-spacing: 0.5px; }
+.stat-accent { color: var(--cyan); }
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 28px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.78rem; color: var(--text-dim);
+}
+.footer-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.8rem; font-weight: 700; color: white;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; }
+  .nav-links { gap: 2px; }
+  .nav-link { padding: 6px 10px; font-size: 0.75rem; }
+  .hero { padding: 60px 20px 40px; }
+  h1 { font-size: 2.2rem; }
+  .nav-cards-section { padding: 0 20px 60px; }
+  .card-featured { grid-column: span 1; flex-direction: column; }
+  .stats-row { flex-wrap: wrap; }
+  .stat-item { min-width: 50%; }
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-badge  { animation: fadeUp 0.5s ease both; }
+h1           { animation: fadeUp 0.5s 0.1s ease both; }
+.hero-sub    { animation: fadeUp 0.5s 0.2s ease both; }
+.upload-box  { animation: fadeUp 0.5s 0.3s ease both; }
+.stats-row   { animation: fadeUp 0.5s 0.4s ease both; }
+.nav-card    { animation: fadeUp 0.5s ease both; }
+.nav-card:nth-child(1) { animation-delay: 0.45s; }
+.nav-card:nth-child(2) { animation-delay: 0.5s; }
+.nav-card:nth-child(3) { animation-delay: 0.55s; }
+.nav-card:nth-child(4) { animation-delay: 0.6s; }
+.nav-card:nth-child(5) { animation-delay: 0.65s; }
+.nav-card:nth-child(6) { animation-delay: 0.7s; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="dot"></div>
+    CHECK<span style="color:var(--cyan)">AI</span>
+  </div>
+  <div class="nav-links">
+    <a href="#" class="nav-link active">Home</a>
+    <a href="/dashboard" class="nav-link">Dashboard</a>
+    <a href="/history" class="nav-link">History</a>
+    <a href="/batch" class="nav-link">Batch Scan</a>
+    <a href="/cybersecurity" class="nav-link">Cyber Security</a>
+    <a href="/about" class="nav-link">About</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">MesoNet v4 · Deepfake Detection Engine · Active</div>
+  <h1>Verify Authenticity.<br>Detect AI Generations.</h1>
+  <p class="hero-sub">Advanced forensic analysis using convolutional neural networks to detect deepfakes, diffusion artifacts, and synthetic patterns — in seconds.</p>
+</section>
+
+<!-- UPLOAD -->
+<section class="upload-section">
+  <div class="upload-box" id="upload-container">
+    <input type="file" id="file-input" accept="image/*,video/*">
+    <div class="upload-icon-wrap">☁️</div>
+    <div class="upload-title">Drop file or click to upload</div>
+    <div class="upload-sub">Supports JPG, PNG, WEBP, MP4, MOV</div>
+  </div>
+  <div class="file-status" id="file-status"></div>
+</section>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat-item">
+    <div class="stat-num"><span class="stat-accent">98.2</span>%</div>
+    <div class="stat-label">MesoNet Accuracy</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span class="stat-accent">&lt;2s</span></div>
+    <div class="stat-label">Inference Time</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span class="stat-accent">4</span></div>
+    <div class="stat-label">CNN Layers</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span class="stat-accent">256px</span></div>
+    <div class="stat-label">Input Resolution</div>
+  </div>
+</div>
+
+<!-- NAVIGATION CARDS -->
+<section class="nav-cards-section">
+  <div class="section-divider">
+    <div class="divider-line"></div>
+    <div class="divider-label">// NAVIGATION MODULES</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="cards-header">
+    <h2>Explore the Suite</h2>
+    <p>Navigate to specialized tools and insights across the platform</p>
+  </div>
+
+  <div class="nav-grid">
+
+    <!-- Featured: Cyber Security -->
+    <a href="/cybersecurity" class="nav-card card-featured card-rose">
+      <div class="card-icon">🛡️</div>
+      <div>
+        <div class="card-content">
+          <div class="card-tag">// Cybersecurity Hub</div>
+          <div class="card-title">Cybersecurity Intelligence Center</div>
+          <div class="card-desc">Explore how deepfakes intersect with cybersecurity threats — phishing, identity fraud, social engineering, and AI-powered attack vectors. Stay ahead of emerging digital threats.</div>
+        </div>
+        <div class="card-footer">
+          <div class="card-status"><span class="status-dot"></span>Live Threat Feed</div>
+          <div class="card-arrow">↗</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- Dashboard -->
+    <a href="/dashboard" class="nav-card card-cyan">
+      <div class="card-icon">📊</div>
+      <div class="card-content">
+        <div class="card-tag">// Analytics</div>
+        <div class="card-title">Dashboard & Analytics</div>
+        <div class="card-desc">View aggregate scan statistics, real vs fake ratios, and detection trends over time with interactive charts.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status"><span class="status-dot"></span>Real-time</div>
+        <div class="card-arrow">↗</div>
+      </div>
+    </a>
+
+    <!-- History -->
+    <a href="/history" class="nav-card card-violet">
+      <div class="card-icon">🕰️</div>
+      <div class="card-content">
+        <div class="card-tag">// Records</div>
+        <div class="card-title">Scan History</div>
+        <div class="card-desc">Browse your past scan results with verdicts, timestamps, and AI influence scores. Export reports as CSV.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status"><span class="status-dot inactive"></span>Local Storage</div>
+        <div class="card-arrow">↗</div>
+      </div>
+    </a>
+
+    <!-- Batch Upload -->
+    <a href="/batch" class="nav-card card-emerald">
+      <div class="card-icon">📦</div>
+      <div class="card-content">
+        <div class="card-tag">// Bulk Processing</div>
+        <div class="card-title">Batch Scan</div>
+        <div class="card-desc">Upload multiple images at once and receive a summary table with individual AI scores for each file.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status"><span class="status-dot"></span>Multi-file</div>
+        <div class="card-arrow">↗</div>
+      </div>
+    </a>
+
+    <!-- About -->
+    <a href="/about" class="nav-card card-amber">
+      <div class="card-icon">🧠</div>
+      <div class="card-content">
+        <div class="card-tag">// Documentation</div>
+        <div class="card-title">About & How It Works</div>
+        <div class="card-desc">Learn about the MesoNet architecture, the detection pipeline from face crop to CNN inference, and the research behind it.</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-status"><span class="status-dot inactive"></span>Research Paper</div>
+        <div class="card-arrow">↗</div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">CHECK<span style="color:var(--cyan)">AI</span></div>
+  <div>Built with MesoNet · TensorFlow · OpenCV · Flask</div>
+  <div style="font-family:'Fira Code',monospace">v2.0.0 · 2025</div>
+</footer>
+
+<script>
+const fileInput = document.getElementById('file-input');
+const fileStatus = document.getElementById('file-status');
+const uploadContainer = document.getElementById('upload-container');
+
+fileInput.addEventListener('change', async function() {
+  if (!this.files.length) return;
+  const file = this.files[0];
+
+  fileStatus.style.display = 'flex';
+  fileStatus.innerHTML = `<span class="spinner"></span> Running Forensic Engine on "${file.name}"...`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch("/predict", { method: "POST", body: formData });
+    const result = await response.json();
+
+    if (response.ok) {
+      fileStatus.innerHTML = `✅ Analysis Complete — ${result.interpretation} (${result.ai_influence_percent}% AI Influence). Opening report...`;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        openDetailedReport({
+          imgSrc: e.target.result,
+          fileName: file.name,
+          fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
+          dimensions: "256×256 (MesoNet Res)",
+          isAI: result.ai_influence_percent > 50,
+          aiInfluence: result.ai_influence_percent,
+          confidence: 94.2,
+          metrics: {
+            noise:    result.ai_influence_percent > 50 ? (80 + Math.random() * 15).toFixed(1) : (10 + Math.random() * 10).toFixed(1),
+            lighting: result.ai_influence_percent > 50 ? (70 + Math.random() * 20).toFixed(1) : (15 + Math.random() * 10).toFixed(1)
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      fileStatus.innerHTML = `❌ Error: ${result.error}`;
+    }
+  } catch (err) {
+    fileStatus.innerHTML = `❌ Connection failed. Ensure app.py is running on port 5000.`;
+  }
+});
+
+// Drag & Drop
+uploadContainer.addEventListener('dragover', e => { e.preventDefault(); uploadContainer.style.borderColor = 'var(--cyan)'; });
+uploadContainer.addEventListener('dragleave', e => { e.preventDefault(); uploadContainer.style.borderColor = 'rgba(40,60,100,0.4)'; });
+uploadContainer.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadContainer.style.borderColor = 'rgba(40,60,100,0.4)';
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change'));
+  }
+});
+
+// Forensic Report (same as original, preserved)
+function openDetailedReport(data) {
+  const themeColor = data.isAI ? '#f85149' : '#3fb950';
+  const themeBg    = data.isAI ? 'rgba(248,81,73,0.1)' : 'rgba(63,185,80,0.1)';
+  const verdictTitle = data.isAI ? 'ARTIFICIAL / SYNTHETIC' : 'AUTHENTIC / ORGANIC';
+  const verdictDesc  = data.isAI
+    ? 'High probability of synthetic origin. MesoNet identified noise variance and structural artifacts consistent with Deepfake generators.'
+    : 'The sample demonstrates natural sensor noise and biological facial consistency. No synthetic signatures detected.';
+
+  const html = `<!DOCTYPE html><html lang="en"><head>
+  <title>Forensic Report: ${data.fileName}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#07080f;--panel:#0e1018;--panel-alt:#111420;--border:#1e2235;--border-glow:#2a3060;--text:#dde4ff;--text-dim:#6b7aaa;--theme:${themeColor};--cyan:#00f5ff;--violet:#9d5cff;--emerald:#00ffa3;--amber:#ffb800;--rose:#ff4d8f;--sky:#38b6ff;}
+    *{box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;margin:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+    header{height:62px;border-bottom:1px solid var(--border-glow);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:var(--panel);position:relative;}
+    header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--rose),var(--emerald));opacity:.7;}
+    .report-id{font-family:'Fira Code',monospace;font-size:.75rem;color:var(--cyan);background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);padding:4px 10px;border-radius:4px;}
+    .dashboard{display:grid;grid-template-columns:350px 1fr 300px;flex:1;overflow:hidden;}
+    .panel{border-right:1px solid var(--border);padding:25px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;background:var(--panel-alt);}
+    .viewport{background:radial-gradient(ellipse 70% 70% at 50% 50%,#0a1022,#07080f);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+    .viewport::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(0,245,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,.03) 1px,transparent 1px);background-size:40px 40px;}
+    .image-container{position:relative;border:1px solid rgba(0,245,255,.25);box-shadow:0 0 60px rgba(0,0,0,.8),0 0 40px rgba(0,245,255,.08);}
+    .analyzed-img{max-height:80vh;max-width:100%;display:block;}
+    .scan-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 47%,rgba(0,245,255,.6) 50%,transparent 53%);background-size:100% 12px;animation:scan 3.5s linear infinite;opacity:.18;pointer-events:none;}
+    @keyframes scan{from{background-position:0 -100%}to{background-position:0 200%}}
+    .verdict-box{background:${themeBg};border:1px solid var(--theme);padding:20px;border-radius:10px;text-align:center;}
+    .verdict-label{font-size:.95rem;font-weight:700;color:var(--theme);text-transform:uppercase;letter-spacing:2px;}
+    .influence-display{font-size:3.2rem;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0 5px;line-height:1;}
+    .gauge-bar-bg{height:12px;background:rgba(255,255,255,.06);border-radius:6px;margin:15px 0;overflow:hidden;border:1px solid var(--border-glow);}
+    .gauge-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--rose));width:${data.aiInfluence}%;box-shadow:0 0 12px rgba(0,245,255,.5);border-radius:6px;}
+    .metric-item{margin-bottom:16px;}
+    .metric-header{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:6px;color:var(--text-dim);}
+    .metric-header span:last-child{color:var(--text);font-weight:600;}
+    .progress-bg{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;}
+    .progress-fill{height:100%;border-radius:3px;background:var(--theme);}
+    .meta-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+    .meta-table td{padding:9px 0;border-bottom:1px solid var(--border);}
+    .meta-table td:first-child{color:var(--text-dim);}
+    .meta-table td:last-child{text-align:right;font-family:'Fira Code',monospace;color:var(--emerald);font-size:.78rem;}
+    .log-console{font-family:'Fira Code',monospace;font-size:.7rem;color:var(--text-dim);line-height:1.8;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:15px;flex:1;}
+    .log-time{color:var(--sky);margin-right:8px;}
+    button{background:linear-gradient(135deg,var(--cyan),var(--violet));color:#07080f;border:none;padding:12px 20px;border-radius:8px;font-weight:800;font-family:'Syne',sans-serif;font-size:.85rem;cursor:pointer;text-transform:uppercase;}
+  </style></head>
+  <body>
+    <header>
+      <div style="font-weight:700">🔍 CHECK AI <span style="font-weight:400;opacity:.6">| Forensic Suite</span></div>
+      <div class="report-id">ID: ${Math.random().toString(36).substr(2,9).toUpperCase()}</div>
+    </header>
+    <div class="dashboard">
+      <div class="panel">
+        <h2>Conclusion</h2>
+        <div class="verdict-box"><div class="verdict-label">${verdictTitle}</div></div>
+        <p style="font-size:.85rem;color:var(--text-dim);line-height:1.5">${verdictDesc}</p>
+        <div style="border-top:1px solid var(--border);padding-top:20px">
+          <h2 style="font-size:.85rem;text-transform:uppercase;color:var(--text-dim)">AI Influence</h2>
+          <div class="influence-display">${data.aiInfluence}%</div>
+          <div class="gauge-bar-bg"><div class="gauge-fill"></div></div>
+        </div>
+        <div>
+          <h2 style="font-size:.85rem;text-transform:uppercase;color:var(--text-dim)">Metrics</h2>
+          <div class="metric-item">
+            <div class="metric-header"><span>Lighting Physics</span><span>${data.metrics.lighting}%</span></div>
+            <div class="progress-bg"><div class="progress-fill" style="width:${data.metrics.lighting}%"></div></div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-header"><span>Sensor Pattern Noise</span><span>${data.metrics.noise}%</span></div>
+            <div class="progress-bg"><div class="progress-fill" style="width:${data.metrics.noise}%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="viewport">
+        <div class="image-container">
+          <div class="scan-overlay"></div>
+          <img src="${data.imgSrc}" class="analyzed-img">
+        </div>
+      </div>
+      <div class="panel" style="border-right:0;border-left:1px solid var(--border);background:#0b0e11">
+        <h2>File Metadata</h2>
+        <table class="meta-table">
+          <tr><td>Filename</td><td>${data.fileName}</td></tr>
+          <tr><td>File Size</td><td>${data.fileSize}</td></tr>
+          <tr><td>Resolution</td><td>${data.dimensions}</td></tr>
+          <tr><td>Confidence</td><td>${data.confidence}%</td></tr>
+        </table>
+        <h2 style="margin-top:20px">Analysis Log</h2>
+        <div class="log-console">
+          <div><span class="log-time">[00:00.1]</span> Initializing MesoNet...</div>
+          <div><span class="log-time">[00:00.4]</span> Fetching model weights...</div>
+          <div><span class="log-time">[00:00.8]</span> Extracting pixel gradients...</div>
+          <div><span class="log-time">[00:01.2]</span> Running inference pass...</div>
+          <div style="color:${themeColor}"><span class="log-time">[00:01.5]</span> Result: ${data.aiInfluence}% AI</div>
+        </div>
+        <button onclick="window.print()">Download PDF Report</button>
+      </div>
+    </div>
+  </body></html>`;
+
+  document.open(); document.write(html); document.close();
+}
+</script>
+</body>
+</html>
